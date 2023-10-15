@@ -3,13 +3,15 @@ const cors=require('cors');
 const { default: mongoose } = require('mongoose');
 require('dotenv').config();
 const jwt=require('jsonwebtoken');
+const CookieParser=require('cookie-parser');
 const bcrypt=require('bcryptjs')
 const User=require('./models/User.js')
+
 const app=express();
 const bcryptSalt=bcrypt.genSaltSync(10);
 const jwtSecret='sjshji2200knkanwkdjjfkgrjsfdgjfdfresjrkfjsjsgjsaghfksdhkfghkdfhgkjdffjkretyyksjh'
 app.use(express.json());
-
+app.use(CookieParser());
 app.use(cors({
     credentials:true,
     origin:'http://localhost:5173',
@@ -39,7 +41,7 @@ app.post('/login',async(req,res)=>{
         if(passOk){
             jwt.sign({email:Userdoc.email,id:Userdoc._id},jwtSecret,{},(err,token)=>{
                 if(err)throw err;
-                res.cookie('token', token).json("Correct Password");
+                res.cookie('token', token).json(Userdoc);
             });
            
         }else{
@@ -47,6 +49,18 @@ app.post('/login',async(req,res)=>{
         }
     }else{
         res.json('User Not found');
+    }
+})
+app.get('/profile',(req,res)=>{
+    const {token}=req.cookies;
+    if(token){
+        jwt.verify(token, jwtSecret,{},async(err,userData)=>{
+            if(err)throw err;
+            const {name,email,_id}=await User.findById(userData.id);
+            res.json({name,email,_id});
+        })
+    }else{
+        res.json(null);
     }
 })
 app.listen(4000);
