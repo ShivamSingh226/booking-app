@@ -7,6 +7,7 @@ const jwt=require('jsonwebtoken');
 const CookieParser=require('cookie-parser');
 const bcrypt=require('bcryptjs')
 const User=require('./models/User.js')
+const Place=require('./models/Place.js')
 const multer=require('multer');
 const app=express();
 const bcryptSalt=bcrypt.genSaltSync(10);
@@ -73,12 +74,15 @@ app.post('/logout',(req,res)=>{
 console.log({__dirname});
 app.post('/upload-by-link',async(req,res)=>{
     const {link}=req.body;
+    if(link){
     const newName='photo'+Date.now()+'.jpg';
     await imageDownloader.image({
         url:link,
         dest: __dirname+'/uploads/'+newName,
     })
-    res.json(newName);
+
+      .catch((err) => console.error(err));
+    res.json(newName);}
 })
 const photosMiddleware=multer({dest:'uploads/'})
 app.post('/upload',photosMiddleware.array('photos',100),(req,res)=>{
@@ -94,5 +98,31 @@ app.post('/upload',photosMiddleware.array('photos',100),(req,res)=>{
     }
 
     res.json(uploadedFiles);
+})
+app.post('/places',(req,res)=>{
+    const {token}=req.cookies;
+    const{title,address,photos:addedPhotos, description,perks
+    ,extraInfo,checkIn,checkOut,maxGuests}=req.body;
+    jwt.verify(token, jwtSecret,{},async(err,userData)=>{
+        if(err)throw err;
+       const placeDoc= await Place.create({
+            owner:userData.id,
+            title,address,addedPhotos, 
+            description,perks
+    ,extraInfo,
+    checkIn,checkOut,maxGuests
+            
+        })
+        res.json(placeDoc);
+      
+    })
+})
+app.get('/places',(req,res)=>{
+    const{token}=req.cookies;
+    jwt.verify(token, jwtSecret,{},async(err,userData)=>{
+        const{id}=userData;
+        res.json(await Place.find({owner:id}))
+    })
+
 })
 app.listen(4000);
