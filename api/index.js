@@ -8,6 +8,7 @@ const CookieParser=require('cookie-parser');
 const bcrypt=require('bcryptjs')
 const User=require('./models/User.js')
 const Place=require('./models/Place.js')
+const Booking=require('./models/Booking.js')
 const multer=require('multer');
 const app=express();
 const bcryptSalt=bcrypt.genSaltSync(10);
@@ -26,6 +27,14 @@ mongoose.connect(process.env.MONGO_URL);
 app.get('/test',(req,res)=>{
     res.json('test ok');
 })
+function getUserDataFromReq(req){
+    return new Promise((resolve,reject)=>{
+        jwt.verify(req.cookies.token,jwtSecret,{},async(err,userData)=>{
+            if(err) throw err;
+            resolve(userData);
+        })
+    })
+}
 app.post('/register',async(req,res)=>{
     const {name,email,password}=req.body;
    try{ const userDoc=await User.create({
@@ -152,5 +161,27 @@ app.put('/places',async(req,res)=>{
 })
 app.get('/places',async(req,res)=>{
     res.json(await Place.find());
+})
+
+app.get('/bookings',async(req,res)=>{
+    const userData=await getUserDataFromReq(req);
+    res.json(await Booking.find({user:userData.id}).populate('place'));
+
+})
+app.post('/bookings',async(req,res)=>{
+    const userData=await getUserDataFromReq(req);
+    const{place,checkIn,checkOut,maxGuests,name,mobile,price}=req.body;
+    if(req.body){
+        Booking.create({
+            place,user:userData.id,checkIn,checkOut,
+            maxGuests,name,mobile,
+            price,
+        }).then((doc)=>{
+            
+            res.json(doc);
+        }).catch((err)=>{
+            throw err;
+        })
+}
 })
 app.listen(4000);
